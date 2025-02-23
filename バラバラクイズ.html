@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バラバラクイズ作成ツール</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        .container {
+            max-width: 80%;
+            margin: auto;
+            text-align: left;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        #processButton {
+            font-weight: bold;
+            background-color: #007BFF;
+            color: white;
+        }
+        .output-box, .history-box {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            white-space: pre-wrap;
+        }
+        .history-entry {
+            border-bottom: 1px solid #aaa;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>バラバラクイズ作成ツール</h1>
+    <div id="howto">
+        <p>文章を入力し、バラバラにしたい単語を「{}」で囲んでください。<br>テキストファイルを元の問題文として使用できます。<br>選択範囲を{}で囲むボタンを使うと便利です。<br>問題文をそれぞれ表示されている形態で保存することもできます。</p>
+    </div>
+    <div class="container">
+        <!-- 入力フォーム -->
+        <h2>入力</h2>
+        <input type="file" id="fileInput">
+        <button id="saveOriginalButton">元の問題文を保存</button><br>
+        <textarea id="inputText" placeholder="例：{日本}の{首都}はどこ？"></textarea><br>
+        <button id="wrapButton">選択範囲を{}で囲む</button>
+        <button id="processButton">バラバラにする</button>
+        <button onclick="clearTextarea()">クリア</button>
+        
+        <!-- 結果表示フォーム -->
+        <h2>結果</h2>
+        <div class="output-box" id="outputBox"></div>
+        <button id="saveResultButton">バラバラ問題文を保存</button>
+        
+        <!-- 履歴フォーム -->
+        <h2>履歴</h2>
+        <div class="history-box" id="history"></div>
+    </div>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const inputField = document.getElementById("inputText");
+            const outputBox = document.getElementById("outputBox");
+            const historyDiv = document.getElementById("history");
+            const wrapButton = document.getElementById("wrapButton");
+            const processButton = document.getElementById("processButton");
+            const saveOriginalButton = document.getElementById("saveOriginalButton");
+            const saveResultButton = document.getElementById("saveResultButton");
+            const fileInput = document.getElementById("fileInput");
+
+            wrapButton.addEventListener("click", function () {
+                let start = inputField.selectionStart;
+                let end = inputField.selectionEnd;
+                let text = inputField.value;
+                if (start !== end) {
+                    let selectedText = text.substring(start, end);
+                    let wrappedText = `{${selectedText}}`;
+                    inputField.value = text.substring(0, start) + wrappedText + text.substring(end);
+                }
+            });
+
+            processButton.addEventListener("click", function () {
+                let text = inputField.value;
+                let matches = text.match(/\{(.*?)\}/g);
+                
+                if (!matches || matches.length === 0) {
+                    outputBox.textContent = "バラバラにする単語が見つかりませんでした。";
+                    return;
+                }
+
+                let words = matches.map(word => word.slice(1, -1));
+                let shuffledWords = words.sort(() => Math.random() - 0.5);
+                let index = 0;
+                let outputText = text.replace(/\{(.*?)\}/g, () => `{${shuffledWords[index++]}}`);
+                
+                outputBox.textContent = outputText;
+                addToHistory(text, outputText);
+            });
+
+            function addToHistory(original, randomized) {
+                let entry = document.createElement("div");
+                entry.className = "history-entry";
+                let timestamp = new Date().toLocaleString();
+                entry.innerHTML = `<strong>${timestamp}</strong><br><strong>元の問題文:</strong> ${original}<br><strong>バラバラ問題文:</strong> ${randomized} <br><button onclick="saveTextPrompt('${randomized}')">この結果を保存</button>`;
+                historyDiv.insertBefore(entry, historyDiv.firstChild);
+            }
+
+            function saveTextPrompt(content) {
+                let fileName = prompt("ファイル名を入力してください (拡張子なし)", "randomized_text");
+                if (fileName !== null) {
+                    saveText(fileName, content);
+                }
+            }
+
+            function saveText(fileName, content) {
+                let blob = new Blob([content], { type: "text/plain" });
+                let link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = fileName + ".txt";
+                link.click();
+            }
+
+            function clearTextarea() {
+            document.getElementById('inputText').value = '';
+            }
+
+            saveOriginalButton.addEventListener("click", function () {
+                let content = inputField.value;
+                saveTextPrompt(content);
+            });
+
+            saveResultButton.addEventListener("click", function () {
+                let content = outputBox.textContent;
+                saveTextPrompt(content);
+            });
+
+            fileInput.addEventListener("change", function (event) {
+                let file = event.target.files[0];
+                if (!file) return;
+                let reader = new FileReader();
+                reader.onload = function (e) {
+                    inputField.value = e.target.result;
+                };
+                reader.readAsText(file);
+            });
+        });
+    </script>
+</body>
+</html>
