@@ -57,7 +57,8 @@
         <textarea id="inputText" placeholder="例：{日本}の{首都}はどこ？"></textarea><br>
         <button id="wrapButton">選択範囲を{}で囲む</button>
         <button id="processButton">バラバラにする</button>
-        <button onclick="clearTextarea()">クリア</button>
+        <button id="clearButton">クリア</button>
+
         
         <!-- 結果表示フォーム -->
         <h2>結果</h2>
@@ -79,7 +80,8 @@
             const saveOriginalButton = document.getElementById("saveOriginalButton");
             const saveResultButton = document.getElementById("saveResultButton");
             const fileInput = document.getElementById("fileInput");
-
+            const clearButton = document.getElementById('clearButton');
+            
             wrapButton.addEventListener("click", function () {
                 let start = inputField.selectionStart;
                 let end = inputField.selectionEnd;
@@ -133,8 +135,10 @@
             }
 
             function clearTextarea() {
-            document.getElementById('inputText').value = '';
+                inputField.value = '';
             }
+
+            clearButton.addEventListener("click", clearTextarea);
 
             saveOriginalButton.addEventListener("click", function () {
                 let content = inputField.value;
