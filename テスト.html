@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バラバラクイズ作成ツール</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            width: 80%;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #007BFF;
+            text-align: center;
+        }
+        textarea, input[type="file"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #outputBox, #history {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            background-color: #f9f9f9;
+        }
+        .history-entry {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+        .history-entry:last-child {
+            border-bottom: none;
+        }
+        .history-entry button {
+            background-color: #aaa;
+        }
+        .history-entry button:hover {
+            background-color: #888;
+        }
+        .accordion {
+            border: 1px solid #ccc;
+            margin-bottom: 5px;
+        }
+
+        .accordion__header {
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-bottom: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        .accordion__header::after {
+            content: '+';
+            float: right;
+        }
+
+        .accordion__header.is-active::after {
+            content: '-';
+        }
+
+        .accordion__panel {
+            padding: 10px;
+            display: none;
+        }
+
+        .accordion__panel.is-active {
+            display: block;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>バラバラクイズ作成ツール</h1>
+        <div id="howto">
+            <p>文章を入力し、バラバラにしたい単語を「{}」で囲んでください。<br>テキストファイルを元の問題文として使用できます。<br>選択範囲を{}で囲むボタンを使うと便利です。<br>問題文をそれぞれ表示されている形態で保存することもできます。</p>
+        </div>
+        <h2>入力</h2>
+        <input type="file" id="fileInput">
+        <button id="saveOriginalButton">元の問題文を保存</button><br>
+        <textarea id="inputText" placeholder="例：{日本}の{首都}はどこ？"></textarea><br>
+        <button id="wrapButton">選択範囲を{}で囲む</button>
+        <button id="processButton">バラバラにする</button>
+        <button id="clearButton">クリア</button>
+        
+        <h2>結果</h2>
+        <div id="outputBox"></div>
+        <button id="saveResultButton">バラバラ問題文を保存</button>
+        <button id="copyResultButton">結果をコピー</button>
+        
+        <h2>履歴</h2>
+        <div id="history"></div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const inputField = document.getElementById("inputText");
+            const outputBox = document.getElementById("outputBox");
+            const historyDiv = document.getElementById("history");
+            const wrapButton = document.getElementById("wrapButton");
+            const processButton = document.getElementById("processButton");
+            const saveOriginalButton = document.getElementById("saveOriginalButton");
+            const saveResultButton = document.getElementById("saveResultButton");
+            const fileInput = document.getElementById("fileInput");
+            const clearButton = document.getElementById('clearButton');
+            
+            wrapButton.addEventListener("click", function () {
+                let start = inputField.selectionStart;
+                let end = inputField.selectionEnd;
+                let text = inputField.value;
+                if (start !== end) {
+                    let selectedText = text.substring(start, end);
+                    let wrappedText = `{${selectedText}}`;
+                    inputField.value = text.substring(0, start) + wrappedText + text.substring(end);
+                }
+            });
+
+            processButton.addEventListener("click", function () {
+                let text = inputField.value;
+                let matches = text.match(/\{(.*?)\}/g);
+                
+                if (!matches || matches.length === 0) {
+                    outputBox.textContent = "バラバラにする単語が見つかりませんでした。";
+                    return;
+                }
+
+                let words = matches.map(word => word.slice(1, -1));
+                let shuffledWords = words.sort(() => Math.random() - 0.5);
+                let index = 0;
+                let outputText = text.replace(/\{(.*?)\}/g, () => `{${shuffledWords[index++]}}`);
+                
+                outputBox.textContent = outputText;
+                addToHistory(text, outputText);
+            });
+
+            function addToHistory(original, randomized) {
+                let entry = document.createElement("div");
+                entry.className = "history-entry";
+                let timestamp = new Date().toLocaleString();
+                entry.innerHTML = `<strong>${timestamp}</strong><br><strong>元の問題文:</strong> ${original}<br><strong>バラバラ問題文:</strong> ${randomized} <br><button onclick="saveTextPrompt('${randomized}')">この結果を保存</button>`;
+                historyDiv.insertBefore(entry, historyDiv.firstChild);
+            }
+
+            function saveTextPrompt(content) {
+                let fileName = prompt("ファイル名を入力してください (拡張子なし)", "randomized_text");
+                if (fileName !== null) {
+                    saveText(fileName, content);
+                }
+            }
+
+            function saveText(fileName, content) {
+                let blob = new Blob([content], { type: "text/plain" });
+                let link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = fileName + ".txt";
+                link.click();
+            }
+
+            function clearTextarea() {
+                inputField.value = '';
+            }
+
+            clearButton.addEventListener("click", clearTextarea);
+
+            saveOriginalButton.addEventListener("click", function () {
+                let content = inputField.value;
+                saveTextPrompt(content);
+            });
+
+            saveResultButton.addEventListener("click", function () {
+                let content = outputBox.textContent;
+                saveTextPrompt(content);
+            });
+
+            fileInput.addEventListener("change", function (event) {
+                let file = event.target.files[0];
+                if (!file) return;
+                let reader = new FileReader();
+                reader.onload = function (e) {
+                    inputField.value = e.target.result;
+                };
+                reader.readAsText(file);
+            });
+        });
+    </script>
+</body>
+</html>
